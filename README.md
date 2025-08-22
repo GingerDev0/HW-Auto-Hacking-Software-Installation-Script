@@ -12,7 +12,7 @@ This Tampermonkey userscript automates hacking and software installation tasks o
   - Sniffs IPs from logs, excluding the user's own IP.
 - **Software Check**: Verifies the software table before uploading to avoid redundant actions.
 - **Root Login Alerts**: Checks `/logs` on load and every 3 seconds for root login attempts, pauses automation, saves IPs, and sends Discord webhook notifications with @mentions.
-- **Discord Notifications**: Sends embedded messages with UK-formatted timestamps (DD/MM/YYYY HH:mm:ss) to a hardcoded, Base64-encoded webhook URL with anti-spam measures.
+- **Discord Notifications**: Sends embedded messages with UK-formatted timestamps (DD/MM/YYYY HH:mm:ss) to a hardcoded, encrypted webhook URL with anti-spam measures.
 - **Modals**:
   - Software configuration modal to select software.
   - Skipped IPs modal to manage IPs to avoid.
@@ -55,7 +55,7 @@ This Tampermonkey userscript automates hacking and software installation tasks o
 - jQuery (loaded by the website, not bundled).
 
 ## Notes
-- The Discord webhook URL is hardcoded and Base64-encoded for security.
+- The Discord webhook URL is hardcoded and encrypted for security.
 - The script uses `localStorage` to store settings, skipped IPs, processed IPs, and sniffed IPs.
 - Ensure you have a cracker installed on Hacker Wars for brute-force hacking.
 - The script skips IPs with insufficient cracker strength or disk space errors, adding them to the skipped list.
