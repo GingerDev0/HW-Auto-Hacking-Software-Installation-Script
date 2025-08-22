@@ -61,7 +61,7 @@ This Tampermonkey userscript automates hacking and software installation tasks o
 - The script skips IPs with insufficient cracker strength or disk space errors, adding them to the skipped list.
 
 ## License
-This project is licensed under the MIT License. See the script header for details.
+This project is licensed under the GNU General Public License v3.0. See the script header for details.
 
 ## Contributing
 Suggestions and improvements are welcome! Feel free to open issues or submit pull requests on GitHub.
