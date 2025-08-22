@@ -2,7 +2,7 @@
 // @name         HW Auto Hacking & Software Installation (Looped, Toggle, Skip Bad Cracker)
 // @namespace    http://tampermonkey.net/
 // @version      1.1.6
-// @description  Automatically scans /list for vulnerable IPs (skipping those that return a cracker error), hacks them, uploads/installs software, clears logs, logs out, and repeats. Includes a sidebar toggle to start/stop automation, clears /logs if textarea is not empty, shows a modal on "Success! Log successfully edited." message, checks software table before uploading, sniffs IPs from logs, and checks /logs immediately on load and every 3 seconds for root login alerts, saving detected IPs to sniffed IPs, pausing automation if active, and sending Discord webhook embed notifications with @mentions using Discord user ID to a hardcoded, Base64-encoded webhook URL (decrypted at runtime) for root logins with anti-spam measures. Timestamp in embeds uses UK format (DD/MM/YYYY HH:mm:ss). Includes a setting for Discord user ID.
+// @description  Automatically scans /list for vulnerable IPs (skipping those that return a cracker error), hacks them, uploads/installs software, clears logs, logs out, and repeats. Includes a sidebar toggle to start/stop automation, clears /logs if textarea is not empty, shows a modal on "Success! Log successfully edited." message, checks software table before uploading, sniffs IPs from logs, and checks /logs immediately on load and every 3 seconds for root login alerts, saving detected IPs to sniffed IPs, pausing automation if active, and sending Discord webhook embed notifications with @mentions using Discord user ID to a hardcoded, encrypted webhook URL (decrypted at runtime) for root logins with anti-spam measures. Timestamp in embeds uses UK format (DD/MM/YYYY HH:mm:ss). Includes a setting for Discord user ID.
 // @match        https://hackerwars.io/*
 // @grant        none
 // @license      GNU General Public License v3.0
@@ -1333,4 +1333,5 @@ setInterval(checkLogsForRootLogin, 3000);
     }
 
 })();
+
 
