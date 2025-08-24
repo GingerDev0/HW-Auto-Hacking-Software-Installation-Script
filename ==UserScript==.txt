@@ -1,15 +1,12 @@
 // ==UserScript==
 // @name         HW Auto Hacking & Software Installation (Looped, Toggle, Skip Bad Cracker)
 // @namespace    http://tampermonkey.net/
-// @version      1.1.6
-// @description  Automatically scans /list for vulnerable IPs (skipping those that return a cracker error), hacks them, uploads/installs software, clears logs, logs out, and repeats. Includes a sidebar toggle to start/stop automation, clears /logs if textarea is not empty, shows a modal on "Success! Log successfully edited." message, checks software table before uploading, sniffs IPs from logs, and checks /logs immediately on load and every 3 seconds for root login alerts, saving detected IPs to sniffed IPs, pausing automation if active, and sending Discord webhook embed notifications with @mentions using Discord user ID to a hardcoded, encrypted webhook URL (decrypted at runtime) for root logins with anti-spam measures. Timestamp in embeds uses UK format (DD/MM/YYYY HH:mm:ss). Includes a setting for Discord user ID.
+// @version      1.1.4
+// @description  Automatically scans /list for vulnerable IPs (skipping those that return a cracker error), hacks them, uploads/installs software, clears logs, logs out, and repeats. Includes a sidebar toggle to start/stop automation, clears /logs if textarea is not empty, shows a modal on "Success! Log successfully edited." message, checks software table before uploading, and sniffs IPs from logs.
 // @match        https://hackerwars.io/*
 // @grant        none
-// @license      GNU General Public License v3.0
+// @license      MIT
 // ==/UserScript==
-
-
-const ENCODED_WEBHOOK_URL = 'aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQwODQ3ODQ2MjIxMzM1NzY5MC9pc19QN25XbXMxU0ZqZEk1aXNsR19JQ0Z1Z0Q4R0FlWmlQRlJRdmRTTFI4cFJYMFBsQ3lwS3N3Yy1SMm9HaUlaOG95Yg==';
 
 // Function to update software list in localStorage (no ID column addition)
 function addSoftwareIdColumn() {
@@ -63,136 +60,6 @@ function getUsername() {
     console.log('Extracted username:', username);
     return username;
 }
-
-// Function to check /logs for root login message and send Discord webhook
-function checkLogsForRootLogin() {
-    fetch('https://hackerwars.io/log')
-        .then(response => response.text())
-        .then(data => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(data, 'text/html');
-            const logArea = doc.querySelector('textarea.logarea');
-            if (logArea && logArea.value.includes('logged in as root')) {
-                const lines = logArea.value.split('\n');
-                const rootLoginLine = lines.find(line => line.includes('logged in as root'));
-                if (rootLoginLine) {
-                    console.log('Root login detected:', rootLoginLine);
-                    // Extract IP from the log line (e.g., [195.44.99.73])
-                    const ipMatch = rootLoginLine.match(/\[(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]/);
-                    const detectedIP = ipMatch ? ipMatch[1] : 'Unknown IP';
-                    // Save to sniffed IPs
-                    let sniffedIPs = JSON.parse(localStorage.getItem('HWAutoHackingSniffedIPs')) || [];
-                    const headerIP = document.querySelector('.header-ip .header-ip-show')?.textContent.trim() || "";
-                    if (detectedIP !== 'Unknown IP' && detectedIP !== headerIP && !sniffedIPs.includes(detectedIP)) {
-                        sniffedIPs.push(detectedIP);
-                        localStorage.setItem('HWAutoHackingSniffedIPs', JSON.stringify(sniffedIPs));
-                        console.log(`Saved root login IP to sniffed IPs: ${detectedIP}`);
-                    }
-                    // Pause automation if active
-                    const isActive = localStorage.getItem("HWAutoHackerActive") === "true";
-                    if (isActive) {
-                        localStorage.setItem("HWAutoHackerActive", "false");
-                        document.querySelector('#hw-toggle-button span').textContent = "HW Auto Hacking: Start";
-                        console.log("Root login detected; automation paused (HWAutoHackerActive set to false).");
-                    }
-                    // Send Discord webhook notification with anti-spam
-                    sendDiscordWebhook(detectedIP, rootLoginLine);
-                }
-            } else {
-                console.log('No root login detected in /logs.');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching /logs:', error);
-        });
-}
-
-// Function to send Discord webhook with embedded message
-function sendDiscordWebhook(ip, message, isTest = false) {
-    // Decode the Base64-encoded webhook URL
-    let webhookUrl;
-    try {
-        webhookUrl = atob(ENCODED_WEBHOOK_URL);
-    } catch (e) {
-        console.error('Error decoding webhook URL:', e);
-        return;
-    }
-
-    if (!webhookUrl) {
-        console.log('No Discord webhook URL available; skipping notification.');
-        return;
-    }
-
-    // Load sent notifications history (skip for test messages)
-    let sentNotifications = isTest ? [] : JSON.parse(localStorage.getItem('HWDiscordSentNotifications')) || [];
-    const now = Date.now();
-    const cooldown = 5 * 60 * 1000; // 5 minutes in milliseconds
-    const messageKey = `${ip}|${message}`;
-
-    // Check if this IP and message were sent recently (skip for test messages)
-    if (!isTest) {
-        const recentNotification = sentNotifications.find(n => n.key === messageKey && (now - n.timestamp) < cooldown);
-        if (recentNotification) {
-            console.log(`Notification for ${messageKey} already sent within cooldown period; skipping.`);
-            return;
-        }
-    }
-
-    // Prepare Discord embed
-    const username = getUsername();
-    const discordUserId = localStorage.getItem('HWDiscordUserId') || '';
-    const mention = discordUserId ? `<@${discordUserId}>` : '@Unknown';
-    const embed = {
-        title: isTest ? "Test Webhook from HW Auto Hacking" : "Root Login Detected on Hacker Wars",
-        color: isTest ? 0x00FF00 : 0xFF0000, // Green for test, red for real alerts
-        fields: [
-            { name: "IP", value: ip, inline: true },
-            { name: "Game Username", value: username, inline: true },
-            { name: "Log", value: message, inline: false },
-            { name: "Timestamp", value: new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }), inline: false }
-        ],
-        footer: { text: "HW Auto Hacking Script" },
-        timestamp: new Date().toISOString()
-    };
-
-    const discordMessage = {
-        content: isTest ? `Test webhook for ${mention}` : mention,
-        embeds: [embed]
-    };
-
-    // Send webhook
-    fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(discordMessage)
-    })
-    .then(response => {
-        if (response.ok) {
-            console.log(`Discord webhook ${isTest ? 'test' : ''} sent successfully for IP: ${ip}`);
-            if (!isTest) {
-                // Update sent notifications, keeping only those within cooldown
-                sentNotifications = sentNotifications.filter(n => (now - n.timestamp) < cooldown);
-                sentNotifications.push({ key: messageKey, timestamp: now });
-                localStorage.setItem('HWDiscordSentNotifications', JSON.stringify(sentNotifications));
-            }
-        } else {
-            console.error('Failed to send Discord webhook:', response.statusText);
-        }
-    })
-    .catch(error => {
-        console.error('Error sending Discord webhook:', error);
-    });
-}
-
-// Check /logs immediately on script load
-window.addEventListener('load', () => {
-    checkLogsForRootLogin();
-});
-
-// Start background log checking every 3 seconds
-setInterval(checkLogsForRootLogin, 3000);
 
 (function() {
     'use strict';
@@ -389,48 +256,6 @@ setInterval(checkLogsForRootLogin, 3000);
             }
         }
 
-        // Discord Webhook Configuration Button
-        if (!document.getElementById('menu-discord-webhook')) {
-            const discordWebhookButton = document.createElement('li');
-            discordWebhookButton.id = 'menu-discord-webhook';
-            discordWebhookButton.innerHTML = '<a href="#discord-webhook-modal" id="discord-webhook-button" data-toggle="modal"><i class="fa fa-comment"></i> <span>Set Discord User ID</span></a>';
-            menu.appendChild(discordWebhookButton);
-
-            if (!document.getElementById('discord-webhook-modal')) {
-                const modalHTML = `
-                    <div id="discord-webhook-modal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="discord-webhook-modal-label" aria-hidden="true">
-                        <div class="modal-header">
-                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-                            <h3 id="discord-webhook-modal-label">Set Discord User ID</h3>
-                        </div>
-                        <div class="modal-body">
-                            <label for="discord-userid-input">Discord User ID (for @mentions):</label>
-                            <input type="text" id="discord-userid-input" placeholder="Enter Discord User ID (e.g., 123456789012345678)" class="input-block-level" />
-                            <p>The Discord webhook URL is hardcoded and encrypted. Enter your Discord User ID for @mentions in root login notifications. To get your User ID, enable Developer Mode in Discord, right-click your username, and select "Copy ID". Leave empty to disable @mentions.</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button id="save-discord-webhook-btn" class="btn btn-primary">Save</button>
-                            <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
-                        </div>
-                    </div>
-                `;
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-                $('#discord-webhook-modal').on('shown', function() {
-                    const currentDiscordUserId = localStorage.getItem('HWDiscordUserId') || '';
-                    document.getElementById('discord-userid-input').value = currentDiscordUserId;
-                });
-
-                document.getElementById('save-discord-webhook-btn').addEventListener('click', () => {
-                    const discordUserId = document.getElementById('discord-userid-input').value.trim();
-                    localStorage.setItem('HWDiscordUserId', discordUserId);
-                    alert('Discord User ID updated!' + (discordUserId === '' ? ' (@mentions Disabled)' : ''));
-                    console.log(`Discord User ID set to: ${discordUserId || 'Not set'}`);
-                    $('#discord-webhook-modal').modal('hide');
-                });
-            }
-        }
-
         // Sniffed IPs Button
         if (!document.getElementById('menu-sniffed-ips')) {
             const sniffedIPsButton = document.createElement('li');
@@ -551,12 +376,10 @@ setInterval(checkLogsForRootLogin, 3000);
                             <p>This script automates hacking tasks in Hacker Wars to save you time. Here’s how to use it step-by-step:</p>
                             <ol>
                                 <li><strong>Set Up Your Software:</strong> Click "Set Software" in the sidebar. Pick a software from the dropdown and hit "Save."</li>
-                                <li><strong>Configure Discord Notifications:</strong> Click "Set Discord User ID" in the sidebar to enter your Discord User ID for @mentions. To get your User ID, enable Developer Mode in Discord, right-click your username, and select "Copy ID". The webhook URL is hardcoded and encrypted.</li>
                                 <li><strong>Start Hacking:</strong> Click "HW Auto Hacking: Start" in the sidebar. The script will scan the IP list in <a href="/list">Hacked Database</a> for targets—IPs with no virus or ones not running your chosen software.</li>
                                 <li><strong>Let It Run:</strong> It hacks targets with brute-force (so make sure you have a cracker installed), uploads your software, installs it, clears logs to hide your tracks, and logs out automatically.</li>
                                 <li><strong>Skip Unwanted IPs:</strong> Use "Add Skipped IP" in the sidebar to skip specific IPs. If your cracker isn’t strong enough, the script skips those IPs and adds them to the list.</li>
-                                <li><strong>Sniff IPs:</strong> Check "Sniffed IPs" in the sidebar to see IPs parsed from logs (including root login IPs, excluding your own).</li>
-                                <li><strong>Root Login Alerts:</strong> The script checks /logs immediately on load and every 3 seconds for root login attempts, saves the IP to sniffed IPs, pauses automation if active, and sends a Discord embed notification with an @mention using your Discord User ID to a hardcoded, encrypted webhook URL with a UK-formatted timestamp (DD/MM/YYYY HH:mm:ss).</li>
+                                <li><strong>Sniff IPs:</strong> Check "Sniffed IPs" in the sidebar to see IPs parsed from logs (excluding your own).</li>
                                 <li><strong>End of List:</strong> When it hits the last page with no targets, a pop-up asks if you want to restart from page 1 or stop. Choose "Restart" to keep going or "Stop" to pause.</li>
                                 <li><strong>Pause Anytime:</strong> Toggle "HW Auto Hacking: Stop" in the sidebar to pause the script whenever you want.</li>
                             </ol>
@@ -1331,7 +1154,4 @@ setInterval(checkLogsForRootLogin, 3000);
         });
         return;
     }
-
 })();
-
-
